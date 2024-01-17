@@ -129,11 +129,11 @@ const ipAddress = getIPAddress();
 console.log(ipAddress);
 
 
-var options =
-{
-  key: fs.readFileSync('keys/server.key'),
-  cert: fs.readFileSync('keys/server.crt')
-};
+//var options =
+//{
+//  key: fs.readFileSync('keys/server.key'),
+//  cert: fs.readFileSync('keys/server.crt')
+//};
 
 
 function getTokenFile() {
@@ -2721,11 +2721,11 @@ app.get("/pass", (req, res) => {
     }
 })
 
-//app.listen(port, () => console.log("server running on port" + port))
+app.listen(port, () => console.log("server running on port" + port))
 
-var server = https.createServer(options, app).listen(port, function () {
-    console.log("server running on port" + port);
+//var server = https.createServer(options, app).listen(port, function () {
+//    console.log("server running on port" + port);
     //console.log('Open ' + url.format(asUrl) + ' with a WebRTC capable browser');
-  });
+//  });
 
 module.exports = app;
