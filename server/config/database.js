@@ -4,12 +4,12 @@ const { MONGO_URI } =  process.env;
 exports.connect = () => {
   // Connecting to the database
   mongoose
-    .connect("mongodb://192.168.11.7:27017/", {
+    .connect("mongodb://localhost:27017/", {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     })
     .then(() => {
-      //console.log("Successfully connected to database");
+      console.log("Successfully connected to database");
     })
     .catch((error) => {
       console.log("database connection failed. exiting now...");

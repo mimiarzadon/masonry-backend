@@ -375,7 +375,9 @@ app.get('/auth/microsoft/callback',
 
     function (req, res) {
 
-        res.redirect('http://192.168.11.7:3000/calendar-settings');
+        //res.redirect('http://10.131.178.21:3000/calendar-settings');
+        //change frontend url
+        res.redirect('masonry-office.netlify.app/calendar-settings');
     });
 
 app.get('/google/callback',
@@ -384,9 +386,11 @@ app.get('/google/callback',
     }),
     function (req, res) {
         //res.redirect('/success')
-        // res.redirect('http://192.168.11.7:3000/link-user?result=ok') // result=ok is my way to highlight google button
-        res.redirect('http://192.168.11.7:3000/calendar-settings') // result=ok is my way to highlight google button
-
+        // res.redirect('http://10.131.178.21:3000/link-user?result=ok') // result=ok is my way to highlight google button
+        //res.redirect('http://localhost:3000/calendar-settings') // result=ok is my way to highlight google button
+        //res.redirect('http://10.131.178.21:3000/calendar-settings');
+        //change frontend url
+        res.redirect('https://masonry-office.netlify.app/calendar-settings');
     }
 );
 
@@ -2520,7 +2524,7 @@ app.post("/qr/scan", async (req, res) => {
         console.log("Scanned token:", scannedToken);
         return res.status(200).json({ token: authToken });
 
-        //res.redirect("http://192.168.11.7:3000/living-room");
+        //res.redirect("http://10.131.178.21:3000/living-room");
     } catch (err) {
         console.log(err);
     }
@@ -2717,11 +2721,11 @@ app.get("/pass", (req, res) => {
     }
 })
 
-app.listen(port, () => console.log("server running on port" + port))
+//app.listen(port, () => console.log("server running on port" + port))
 
-// var server = https.createServer(options, app).listen(port, function () {
-//     console.log("server running on port" + port);
-//     //console.log('Open ' + url.format(asUrl) + ' with a WebRTC capable browser');
-//   });
+var server = https.createServer(options, app).listen(port, function () {
+    console.log("server running on port" + port);
+    //console.log('Open ' + url.format(asUrl) + ' with a WebRTC capable browser');
+  });
 
 module.exports = app;

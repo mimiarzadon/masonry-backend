@@ -29,7 +29,7 @@ passport.deserializeUser(function(user, done) {
 const MSGraphStrategy = new MicrosoftStrategy({
     clientID: MICROSOFT_GRAPH_CLIENT_ID,
     clientSecret: MICROSOFT_GRAPH_CLIENT_SECRET,
-    callbackURL: 'http://192.168.11.7:8443/auth/microsoft/callback',
+    callbackURL: 'https://10.131.178.21:8443/auth/microsoft/callback',
     accessType: 'offline',
     scope: ['user.read', 'offline_access', 'calendars.readWrite', 'tasks.readWrite']
   },
