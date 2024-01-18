@@ -7,6 +7,7 @@ require('./passport');
 //import google api
 const { google } = require('googleapis')
 const fs = require("fs");
+const cors = require('cors');
 const path = require('path');
 const { default: intlFormat } = require('date-fns/intlFormat');
 const { setDefaultResultOrder } = require('dns');
@@ -23,7 +24,7 @@ var accountType = "" // msgraph , google
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
+app.use(cors());
 app.use(cookieSession({
   name: 'google-auth-session',
   keys: ['key1', 'key2']
