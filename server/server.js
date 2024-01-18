@@ -1,65 +1,49 @@
-require('./passport');
-require("dotenv").config();
-require("./config/database").connect();
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const express = require('express');
 const passport = require('passport');
 const refresh = require('passport-oauth2-refresh');
 const cookieSession = require('cookie-session');
+require('./passport');
 //import google api
 const { google } = require('googleapis')
 const fs = require("fs");
-const https = require('https');
-const cors = require('cors');
 const path = require('path');
 const { default: intlFormat } = require('date-fns/intlFormat');
 const { setDefaultResultOrder } = require('dns');
 var pathToJson_1 = path.resolve(__dirname, './credentials.json');
 const credentials = JSON.parse(fs.readFileSync(pathToJson_1));
-const axios = require('axios');
+const  axios = require('axios');
 const { Console } = require('console');
 const app = express();
 
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const QR = require("qrcode");
-const User = require("./model/user");
-const ConnectedDevice = require("./model/connectedDevice");
-const QRCode = require("./model/qrCode");
-
-const {response} = require('express');
 
 var tokenNow = ""
-var userId = ""
-var generatedToken = ""
-var scannedToken = ""
 
 var accountType = "" // msgraph , google
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+
 app.use(cookieSession({
-    name: 'google-auth-session',
-    keys: ['key1', 'key2']
+  name: 'google-auth-session',
+  keys: ['key1', 'key2']
 }))
 
 const isLoggedIn = (req, res, next) => {
     if (req.user) {
-        next();
+    next();
     } else {
-        res.sendStatus(401);
+    res.sendStatus(401);
     }
-}
+    }
 
 app.use(passport.initialize());
 app.use(passport.session());
 
-const port = process.env.PORT || 8443
-const qrtoken = process.env.TOKEN_KEY || "random"
+const port = process.env.PORT || 3001
 
 app.get("/", (req, res) => {
-    res.json({ message: "You are not logged in" })
+    res.json({message: "You are not logged in"})
 })
 
 app.get("/failed", (req, res) => {
@@ -69,75 +53,35 @@ app.get("/success", (req, res) => {
     res.send(`Welcome ${req.user.email}`)
 })
 
-app.get("/linked-in", (req, res) => {
-
+app.get("/linked-in", (req, res) => { 
+    
     // step 1
-    const pathToJson = path.resolve(__dirname, "./" + req.query.user + ".json");
-    const sessionFile = { userName: req.query.user.toLowerCase(), gtoken: pathToJson };
+        const pathToJson = path.resolve(__dirname, "./" + req.query.user + ".json");
+        const sessionFile = {userName: req.query.user.toLowerCase(), gtoken: pathToJson};
+        
+        console.log("getTokenFile: Hello Mimi")
 
-    console.log("getTokenFile: Hello Mimi")
+        let data = JSON.stringify(sessionFile);
+        fs.writeFileSync('./session.json', data);
 
-    let data = JSON.stringify(sessionFile);
-    fs.writeFileSync('./session.json', data);
+        clearTokenFile()
 
-    clearTokenFile()
+        if(req.query.accType === "google")
+        {
+            res.redirect('/google')
+        }
+        else if(req.query.accType === "msgraph")
+        {
+            res.redirect('/auth/microsoft')
+        }
 
-    if (req.query.accType === "google") {
-        res.redirect('/google')
-    }
-    else if (req.query.accType === "msgraph") {
-        res.redirect('/auth/microsoft')
-    }
-
-
+        
 })
 
-const { networkInterfaces } = require('os');
-
-const getIPAddress = () => {
-  const nets = networkInterfaces();
-  const results = {};
-
-  for (const name of Object.keys(nets)) {
-    for (const net of nets[name]) {
-      // Retrieve only IPv4 addresses
-      if (net.family === 'IPv4' && !net.internal) {
-        if (!results[name]) {
-          results[name] = [];
-        }
-        results[name].push(net.address);
-      }
-    }
-  }
-  
-  // Return the first IP address for the first NIC found
-  const nicNames = Object.keys(results);
-  if (nicNames.length > 0) {
-    const firstNICAddresses = results[nicNames[0]];
-    if (firstNICAddresses.length > 0) {
-      return firstNICAddresses[0];
-    }
-  }
-  
-  // No IP address found
-  return null;
-};
-
-
-
-const ipAddress = getIPAddress();
-console.log(ipAddress);
-
-
-//var options =
-//{
-//  key: fs.readFileSync('keys/server.key'),
-//  cert: fs.readFileSync('keys/server.crt')
-//};
-
-
-function getTokenFile() {
-    if (tokenNow === "" || accountType === "") {
+function getTokenFile()
+{
+    if(tokenNow === "" || accountType === "")
+    {
         var pathToSession = path.resolve(__dirname, '../session.json');
         let session = JSON.parse(fs.readFileSync(pathToSession));
 
@@ -148,30 +92,35 @@ function getTokenFile() {
         const tokens = JSON.parse(fs.readFileSync(pathToJson_2));
 
         // console.log("getTokenFile: ", tokens.google, tokens.msgraph)
-        if (tokens.google !== undefined) {
+        if(tokens.google!==undefined)
+        {
             accountType = "google"
         }
-        else if (tokens.msgraph !== undefined) {
+        else if(tokens.msgraph!==undefined)
+        {
             accountType = "msgraph"
         }
         // console.log("getTokenFile: ", tokens, tokenNow, accountType)
 
     }
-    else {
+    else
+    {
     }
     return tokenNow;
 }
 
-function clearTokenFile() {
+function clearTokenFile()
+{
     tokenNow = ""
     accountType = ""
     accountType = ""
 }
 
 
-function setTokenFile(refreshToken, accessToken) {
+function setTokenFile(refreshToken, accessToken)
+{
     var doSave = false
-    if (typeof refreshToken === "string" || typeof accessToken === "string") // TODO: logic if argument is NULL
+    if( typeof refreshToken === "string" || typeof accessToken === "string") // TODO: logic if argument is NULL
     {
         var pathToSession = path.resolve(__dirname, '../session.json');
         let session = JSON.parse(fs.readFileSync(pathToSession));
@@ -179,7 +128,8 @@ function setTokenFile(refreshToken, accessToken) {
         var pathToJson_2 = path.resolve(__dirname, session.gtoken);
         const tokens = JSON.parse(fs.readFileSync(pathToJson_2));
 
-        if (tokens.google !== undefined) {
+        if(tokens.google!==undefined)
+        {
             var tokObjInfo = JSON.parse(tokens.google)
             tokObjInfo.access_token = accessToken;
             // tokObjInfo.refresh_token = refreshToken;
@@ -188,7 +138,8 @@ function setTokenFile(refreshToken, accessToken) {
             tokens.google = tokStrInfo
             doSave = true
         }
-        else if (tokens.msgraph !== undefined) {
+        else if(tokens.msgraph!==undefined)
+        {
 
             var tokObjInfo = JSON.parse(tokens.msgraph)
             tokObjInfo.access_token = accessToken;
@@ -200,52 +151,62 @@ function setTokenFile(refreshToken, accessToken) {
             doSave = true
         }
 
-        if (doSave) {
+        if(doSave)
+        {
             // // console.log("will save the new token: ", tokens)
             // write token to token file
             let updatedTokenFile = JSON.stringify(tokens);
             fs.writeFileSync(pathToJson_2, updatedTokenFile);
 
         }
+
+        
+
+
     }
 }
 
-function getGoogleToken(tok) {
+function getGoogleToken(tok)
+{
     //read token file you saved earlier in passport_setup.js
     var pathToJson_2 = path.resolve(__dirname, tok);
     //get tokens to details to object
     const tokens = JSON.parse(fs.readFileSync(pathToJson_2));
 
-    var realTok = tokens.google !== null ? JSON.parse(tokens.google) : null
+    var realTok = tokens.google!==null?JSON.parse(tokens.google):null
 
-    return realTok !== null ? realTok : null
+    return realTok!==null?realTok:null
 }
 
-function getMsGraphToken(tok) {
+function getMsGraphToken(tok)
+{
     // console.log("Being called from " + arguments.callee.caller.toString());
     //read token file you saved earlier in passport_setup.js
     var pathToJson_2 = path.resolve(__dirname, tok);
     //get tokens to details to object
     const tokens = JSON.parse(fs.readFileSync(pathToJson_2));
 
-    var realTok = tokens.msgraph !== null ? JSON.parse(tokens.msgraph) : null
+    var realTok = tokens.msgraph!==null?JSON.parse(tokens.msgraph):null
 
-    return realTok !== null ? realTok : null
+    return realTok!==null?realTok:null
 }
 
-function refreshToken() {
+function refreshToken()
+{
     var tok = getTokenFile();
 
 
     var tokens = null
     var strategyType = null
 
-    if (accountType === "google") {
+    if(accountType === "google")
+    {
         // console.log("gone through ms path")
         tokens = getGoogleToken(tok)
         strategyType = "google"
     }
-    else if (accountType === "msgraph") {
+    else if(accountType === "msgraph")
+    {
         tokens = getMsGraphToken(tok)
         strategyType = "microsoft"
     }
@@ -262,14 +223,15 @@ function refreshToken() {
             // console.log("new accessToken: ", accessToken)
             // console.log("new refreshToken: ", refreshToken)
 
-            if (err === null) {
+            if(err === null)
+            {
                 setTokenFile(refreshToken, accessToken)
             }
         },
-    );
+      );
 }
 
-app.get("/try", (req, res) => {
+app.get("/try", (req, res) => { 
 
 
     // getTokenFile()
@@ -287,32 +249,33 @@ app.get("/try", (req, res) => {
     //         title: 'EggBendsOverRow'
     //     }
     //   }).then( response => {
-
+      
     //             // console.log("output here for try ")
     //             // console.log(response.data)
-
+    
     //             // // console.log(response.data.value[0].emailAddress)
     //           }).catch(error => {
     //             // console.log("error here ")
     //             // console.log(error)
     //           })
 
-
+    
 })
 
-app.get("/log-in", (req, res) => {
-
+app.get("/log-in", (req, res) => { 
+    
     // step 1        
 
     clearTokenFile()
-
+    
     let sessionList = JSON.parse(fs.readFileSync("./sessionList.json"));
     let index = sessionList.userList.findIndex((element) => element.userName.toLowerCase() === req.query.user.toLowerCase())
-    if (index !== -1) {
+    if(index !== -1)
+    {
         // console.log("has found user")
         // if session list is existing, there is no need for 
         const pathToJson = path.resolve(__dirname, "./" + req.query.user + ".json");
-        const sessionFile = { userName: req.query.user.toLowerCase(), gtoken: pathToJson };
+        const sessionFile = {userName: req.query.user.toLowerCase(), gtoken: pathToJson};
         let data = JSON.stringify(sessionFile);
         fs.writeFileSync('./session.json', data);
 
@@ -321,32 +284,33 @@ app.get("/log-in", (req, res) => {
         // get new token regardless
         refreshToken()
 
-        res.send(["result", "OK"]);
+        res.send(["result","OK"]);   
     }
-    else {
+    else
+    {
         // console.log("Cannot find user")
-        res.send(["result", "Error pulling of accounts"]);
+        res.send(["result","Error pulling of accounts"]);  
     }
     //
 })
 
-app.get("/use-in", (req, res) => {
-
+app.get("/use-in", (req, res) => { 
+    
     // step 1
-
+        
     // console.log("using token:" + tokenNow);        
 })
 
-app.get('/google',
+app.get('/google', 
     passport.authenticate('google', {
-        scope:
-            ['email', 'profile',
+            scope:
+                ['email', 'profile', 
                 'https://www.googleapis.com/auth/calendar',
                 'https://www.googleapis.com/auth/calendar.events',
                 'https://www.googleapis.com/auth/tasks'],
-        accessType: 'offline',
-        prompt: 'consent',
-    }
+                accessType: 'offline',
+                prompt: 'consent',
+        }
     ));
 
 // GET /auth/microsoft
@@ -355,30 +319,28 @@ app.get('/google',
 //   redirecting the user to the common Microsoft login endpoint. After authorization, Microsoft
 //   will redirect the user back to this application at /auth/microsoft/callback
 app.get('/auth/microsoft',
-    passport.authenticate('microsoft', {
-        // Optionally add any authentication params here
-        prompt: 'select_account'
-    }),
-    // eslint-disable-next-line no-unused-vars
-    function (req, res) {
-        // The request will be redirected to Microsoft for authentication, so this
-        // function will not be called.
-    });
+  passport.authenticate('microsoft', {
+    // Optionally add any authentication params here
+    prompt: 'select_account'
+  }),
+  // eslint-disable-next-line no-unused-vars
+  function (req, res) {
+    // The request will be redirected to Microsoft for authentication, so this
+    // function will not be called.
+  });
 
-// GET /auth/microsoft/callback
+  // GET /auth/microsoft/callback
 //   Use passport.authenticate() as route middleware to authenticate the
 //   request.  If authentication fails, the user will be redirected back to the
 //   login page.  Otherwise, the primary route function function will be called,
 //   which, in this example, will redirect the user to the home page.
 app.get('/auth/microsoft/callback',
-    passport.authenticate('microsoft', { failureRedirect: '/login' }),
+passport.authenticate('microsoft', { failureRedirect: '/login' }),
 
-    function (req, res) {
-
-        //res.redirect('http://10.131.178.21:3000/calendar-settings');
-        //change frontend url
-        res.redirect('masonry-office.netlify.app/calendar-settings');
-    });
+function (req, res) {
+  
+  res.redirect('http://localhost:3000/calendar-settings');
+});
 
 app.get('/google/callback',
     passport.authenticate('google', {
@@ -386,11 +348,9 @@ app.get('/google/callback',
     }),
     function (req, res) {
         //res.redirect('/success')
-        // res.redirect('http://10.131.178.21:3000/link-user?result=ok') // result=ok is my way to highlight google button
-        //res.redirect('http://localhost:3000/calendar-settings') // result=ok is my way to highlight google button
-        //res.redirect('http://10.131.178.21:3000/calendar-settings');
-        //change frontend url
-        res.redirect('https://masonry-office.netlify.app/calendar-settings');
+        // res.redirect('http://localhost:3000/link-user?result=ok') // result=ok is my way to highlight google button
+        res.redirect('http://localhost:3000/calendar-settings') // result=ok is my way to highlight google button
+
     }
 );
 
@@ -411,8 +371,8 @@ async function fetchEvent(authToken, selectDay, user) {
 
     var events = [];
 
-    const calendar = google.calendar({ version: 'v3', auth: authToken });
-
+    const calendar = google.calendar({version: 'v3', auth: authToken});
+    
     var firstDay = null;
     var lastDay = null;
     firstDay = new Date(selectDay.getFullYear(), selectDay.getMonth(), 1);
@@ -420,33 +380,35 @@ async function fetchEvent(authToken, selectDay, user) {
 
     return new Promise((resolve, reject) => {
         const eventsA = calendar.events.list({
-            calendarId: user,
-            timeMin: firstDay,
-            timeMax: lastDay,
-            singleEvents: true,
-            orderBy: 'startTime',
+          calendarId: user,
+          timeMin: firstDay,
+          timeMax: lastDay,
+          singleEvents: true,
+          orderBy: 'startTime',
         }, (err, res) => {
-            if (err) {
-                resolve([]);
-            }
-            else {
-                events = res.data.items;
-
-                // console.log(res.data.items)
-
-                if (events.length) {
-
-                    resolve([{ userName: user, eventsInfo: events }]);
-                    //console.log({userName: user, eventsInfo: events});
-                } else {
-                    resolve([]); // if no event return empty obj array
-                }
-            }
+          if (err) {
+            resolve([]);
+          }
+          else
+          {
+              events = res.data.items;
+    
+              // console.log(res.data.items)
+    
+              if (events.length) {
+                  
+                resolve([{userName: user, eventsInfo: events}]);
+                //console.log({userName: user, eventsInfo: events});
+              } else {
+                resolve([]); // if no event return empty obj array
+              }
+          }
         });
-    });
+      });
 }
 
-function getGoogleCalendarListEvent(req, res, tok) {
+function getGoogleCalendarListEvent(req, res, tok)
+{
     try {
         const tokens = getGoogleToken(tok)
         //extract credential details
@@ -461,10 +423,12 @@ function getGoogleCalendarListEvent(req, res, tok) {
 
         // setup selectDay argument for fetchEvent
         var selectDay = null;
-        if (req.query.dateNow != null) {
+        if(req.query.dateNow != null)
+        {
             selectDay = new Date(req.query.dateNow);
         }
-        else {
+        else
+        {
             // send error
             res.send([]);
             return;
@@ -472,11 +436,13 @@ function getGoogleCalendarListEvent(req, res, tok) {
 
         // setup userName as argument for fetchEvent
         var userName = [];
-        if (req.query.userName != null) {
+        if(req.query.userName != null)
+        {
             userName = JSON.parse(req.query.userName);
         }
-        else {
-            userName = [{ user: "primary" },];
+        else
+        {
+            userName = [{user: "primary"},];
         }
 
         var promises = [];
@@ -486,20 +452,19 @@ function getGoogleCalendarListEvent(req, res, tok) {
         })
 
         Promise.all(promises).then((turnOuts) => {
-            console.log("TURNOUT: ", turnOuts);
-            res.send({ result: turnOuts });
-        });
+            res.send({result: turnOuts});
+        });     
 
-    } catch (err) {
+    } catch(err) {
         res.status(500).json(err);
     }
 }
 function pad(number) {
     if (number < 10) {
-        return '0' + number;
+      return '0' + number;
     }
     return number;
-}
+  }
 
 async function fetchMsEvent(selectDay, user, tok) {
 
@@ -513,21 +478,21 @@ async function fetchMsEvent(selectDay, user, tok) {
     // console.log(`https://graph.microsoft.com/v1.0/me/calendars/${user}/events?startDateTime={${firstDay.toISOString()}}&endDateTime={${lastDay.toISOString()}}`)
 
     let startDate = firstDay.getFullYear() +
-        '-' + pad(firstDay.getMonth() + 1) +
-        '-' + pad(firstDay.getDate()) +
-        'T' + pad(firstDay.getHours()) +
-        ':' + pad(firstDay.getMinutes()) +
-        ':' + pad(firstDay.getSeconds()) +
-        '.' + (firstDay.getMilliseconds() / 1000).toFixed(3).slice(2, 5) +
-        'Z';
+    '-' + pad(firstDay.getMonth() + 1) +
+    '-' + pad(firstDay.getDate()) +
+    'T' + pad(firstDay.getHours()) +
+    ':' + pad(firstDay.getMinutes()) +
+    ':' + pad(firstDay.getSeconds()) +
+    '.' + (firstDay.getMilliseconds() / 1000).toFixed(3).slice(2, 5) +
+    'Z';
     let endDate = lastDay.getFullYear() +
-        '-' + pad(lastDay.getMonth() + 1) +
-        '-' + pad(lastDay.getDate()) +
-        'T' + pad(lastDay.getHours()) +
-        ':' + pad(lastDay.getMinutes()) +
-        ':' + pad(lastDay.getSeconds()) +
-        '.' + (lastDay.getMilliseconds() / 1000).toFixed(3).slice(2, 5) +
-        'Z';
+    '-' + pad(lastDay.getMonth() + 1) +
+    '-' + pad(lastDay.getDate()) +
+    'T' + pad(lastDay.getHours()) +
+    ':' + pad(lastDay.getMinutes()) +
+    ':' + pad(lastDay.getSeconds()) +
+    '.' + (lastDay.getMilliseconds() / 1000).toFixed(3).slice(2, 5) +
+    'Z';
 
     // console.log(startDate)
     // console.log(`https://graph.microsoft.com/v1.0/me/calendars/${user}/events?$filter=start/dateTime ge '${startDate}'`)
@@ -535,26 +500,27 @@ async function fetchMsEvent(selectDay, user, tok) {
     return new Promise((resolve, reject) => {
 
 
-        try {
+        try 
+        {
             const tokens = getMsGraphToken(tok)
 
             axios.get(`https://graph.microsoft.com/v1.0/me/calendars/${user}/events?$filter=start/dateTime ge '${startDate}' and end/dateTime le '${endDate}'`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${tokens.access_token}`
-                    },
+            {
+                headers: {
+                Authorization: `Bearer ${tokens.access_token}`
                 },
-            ).then(response => {
-
+            },
+            ).then( response => {
+        
                 events = response.data.value;
                 if (events.length) {
-
+                    
                     // // console.log(response.data.value)
-                    resolve([{ userName: user, eventsInfo: events }]);
+                    resolve([{userName: user, eventsInfo: events}]);
                 } else {
                     resolve([]); // if no event return empty obj array
                 }
-
+                
             }).catch(error => {
                 // console.log("error here ")
                 // console.log(error)
@@ -562,25 +528,29 @@ async function fetchMsEvent(selectDay, user, tok) {
 
 
         }
-        catch (error) {
+        catch (error)
+        {
             // console.log(error)
         }
 
-
-    });
+        
+      });
 }
 
-function getMsGraphCalendarEventList(req, res, tok) {
+function getMsGraphCalendarEventList(req, res, tok)
+{
     try {
-
+        
         // const tokens = getMsGraphToken(tok)
-
+        
         // setup selectDay argument for fetchEvent
         var selectDay = null;
-        if (req.query.dateNow != null) {
+        if(req.query.dateNow != null)
+        {
             selectDay = new Date(req.query.dateNow);
         }
-        else {
+        else
+        {
             // send error
             res.send([]);
             return;
@@ -588,11 +558,13 @@ function getMsGraphCalendarEventList(req, res, tok) {
 
         // setup userName as argument for fetchEvent
         var userName = [];
-        if (req.query.userName != null) {
+        if(req.query.userName != null)
+        {
             userName = JSON.parse(req.query.userName);
 
         }
-        else {
+        else
+        {
             res.status(500).json(err);
             return
         }
@@ -601,16 +573,16 @@ function getMsGraphCalendarEventList(req, res, tok) {
 
         userName.forEach(users => {
 
-
+            
             promises.push(fetchMsEvent(selectDay, users.user, tok));
         })
 
         Promise.all(promises).then((turnOuts) => {
             // console.log("outputs: ", turnOuts)
-            res.send({ result: turnOuts });
-        });
+            res.send({result: turnOuts});
+        });     
 
-    } catch (err) {
+    } catch(err) {
         res.status(500).json(err);
     }
 
@@ -618,17 +590,19 @@ function getMsGraphCalendarEventList(req, res, tok) {
 
 // Sample Query to Google Calendar
 app.get("/listEvent", (req, res) => {
-
+    
     var tok = getTokenFile();
 
-    if (accountType === "google") {
+    if(accountType === "google")
+    {
         getGoogleCalendarListEvent(req, res, tok)
     }
-    else if (accountType === "msgraph") {
+    else if (accountType === "msgraph")
+    {
         getMsGraphCalendarEventList(req, res, tok)
     }
 
-
+    
 });
 
 // Sample Query to Google Calendar
@@ -646,43 +620,44 @@ app.get("/listDadEvent", (req, res) => {
             redirect_uris[0]);
         // setup credentials to OAuth2 object as argument for fetchEvent
         oAuth2Client.setCredentials(tokens);
+  
 
-
-        const calendar = google.calendar({ version: 'v3', auth: oAuth2Client });
+        const calendar = google.calendar({version: 'v3', auth: oAuth2Client});
         let selectDay = req.query.dateNow;
 
         const dateSplit = selectDay.split('T')[0];
-        const lastDay = dateSplit + "T23:59:59Z"
-
-        //    // console.log("SELECT DAY:", selectDay);
-        //     // console.log("LAST DAY:", lastDay);
+        const lastDay = dateSplit+"T23:59:59Z"
+        
+    //    // console.log("SELECT DAY:", selectDay);
+    //     // console.log("LAST DAY:", lastDay);
         const eventsA = calendar.events.list({
             calendarId: "dad.lilikoi@gmail.com",
             timeMin: selectDay, //"2022-03-02T00:00:00Z"
             timeMax: lastDay,//"2022-03-03T23:59:59Z",
             singleEvents: true,
             orderBy: 'startTime',
-        }, (err, result) => {
-
+          }, (err, result) => {
+            
             if (err) {
-
+                
                 res.status(500).json(err);
             }
-            else {
-                res.send({ eventsInfo: result.data.items });
-                console.log("ENTERED RESULT: ", result.data.items);
-
+            else
+            {
+                res.send({eventsInfo: result.data.items});  
+                 console.log("ENTERED RESULT: ", result.data.items);
+                
             }
 
 
-            //    events = result.data.items;
-            // if (result.data.items !== null) {
-            // } else {
-            //   res.send("NOT EXISTING");
-            // }
-        });
+        //    events = result.data.items;
+           // if (result.data.items !== null) {
+           // } else {
+             //   res.send("NOT EXISTING");
+           // }
+          });    
 
-    } catch (err) {
+    } catch(err) {
         // console.log("ENTERED LIST DAD err",err)
         res.status(500).json(err);
     }
@@ -703,42 +678,43 @@ app.get("/listMomEvent", (req, res) => {
             redirect_uris[0]);
         // setup credentials to OAuth2 object as argument for fetchEvent
         oAuth2Client.setCredentials(tokens);
+  
 
-
-        const calendar = google.calendar({ version: 'v3', auth: oAuth2Client });
+        const calendar = google.calendar({version: 'v3', auth: oAuth2Client});
         let selectDay = req.query.dateNow;
 
         const dateSplit = selectDay.split('T')[0];
-        const lastDay = dateSplit + "T23:59:59Z"
-
-        //    // console.log("SELECT DAY:", selectDay);
-        //     // console.log("LAST DAY:", lastDay);
+        const lastDay = dateSplit+"T23:59:59Z"
+        
+    //    // console.log("SELECT DAY:", selectDay);
+    //     // console.log("LAST DAY:", lastDay);
         const eventsA = calendar.events.list({
             calendarId: "mom.lilikoi@gmail.com",
             timeMin: selectDay, //"2022-03-02T00:00:00Z"
             timeMax: lastDay,//"2022-03-03T23:59:59Z",
             singleEvents: true,
             orderBy: 'startTime',
-        }, (err, result) => {
-
+          }, (err, result) => {
+            
             if (err) {
-
+                
                 res.status(500).json(err);
             }
-            else {
+            else
+            {
 
                 // events = result.data.items;
                 // if (result.data.items !== null) {
-                res.send({ eventsInfo: result.data.items });
+                     res.send({eventsInfo: result.data.items});  
                 // } else {
-                //   res.send("NOT EXISTING");
+                  //   res.send("NOT EXISTING");
                 // }
                 // console.log("ENTERED RESULT: ", result.data.items);
             }
 
-        });
+          });    
 
-    } catch (err) {
+    } catch(err) {
         // console.log("ENTERED LIST DAD err",err)
         res.status(500).json(err);
     }
@@ -759,48 +735,50 @@ app.get("/listChildEvent", (req, res) => {
             redirect_uris[0]);
         // setup credentials to OAuth2 object as argument for fetchEvent
         oAuth2Client.setCredentials(tokens);
+  
 
-
-        const calendar = google.calendar({ version: 'v3', auth: oAuth2Client });
+        const calendar = google.calendar({version: 'v3', auth: oAuth2Client});
         let selectDay = req.query.dateNow;
 
         const dateSplit = selectDay.split('T')[0];
-        const lastDay = dateSplit + "T23:59:59Z"
-
-        //    // console.log("SELECT DAY:", selectDay);
-        //     // console.log("LAST DAY:", lastDay);
+        const lastDay = dateSplit+"T23:59:59Z"
+        
+    //    // console.log("SELECT DAY:", selectDay);
+    //     // console.log("LAST DAY:", lastDay);
         const eventsA = calendar.events.list({
             calendarId: "child.lilikoi@gmail.com",
             timeMin: selectDay, //"2022-03-02T00:00:00Z"
             timeMax: lastDay,//"2022-03-03T23:59:59Z",
             singleEvents: true,
             orderBy: 'startTime',
-        }, (err, result) => {
-
+          }, (err, result) => {
+            
             if (err) {
-
+                
                 res.status(500).json(err);
             }
-            else {
+            else
+            {
 
                 // events = result.data.items;
                 // if (result.data.items !== null) {
-                res.send({ eventsInfo: result.data.items });
+                     res.send({eventsInfo: result.data.items});  
                 // } else {
-                //   res.send("NOT EXISTING");
+                  //   res.send("NOT EXISTING");
                 // }
                 // console.log("ENTERED RESULT: ", result.data.items);
             }
 
-        });
+          });    
 
-    } catch (err) {
+    } catch(err) {
         // console.log("ENTERED LIST DAD err",err)
         res.status(500).json(err);
     }
 });
 
-function addEventOnGoogleCalendar(req, res, tok) {
+function addEventOnGoogleCalendar(req, res, tok)
+{
     try {
         const tokens = getGoogleToken(tok)
         //extract credential details
@@ -814,59 +792,69 @@ function addEventOnGoogleCalendar(req, res, tok) {
         oAuth2Client.setCredentials(tokens);
 
 
-        const calendar = google.calendar({ version: 'v3', auth: oAuth2Client });
+        const calendar = google.calendar({version: 'v3', auth: oAuth2Client});
 
         // not optional req.body.summary, start, end
 
         // about all day, for start end use date, yyy-mm-dd
 
-
+        
         let event = {
             summary: req.body.summary,
-            description: req.body.description !== null ? req.body.description : "",
+            description: req.body.description!==null?req.body.description:"",            
         }
 
-        if (req.body.start !== undefined) {
-            if (req.body.start.dateTime !== undefined) {
+        if(req.body.start !== undefined)
+        {
+            if(req.body.start.dateTime !== undefined)
+            {
                 event["start"] = req.body.start;
             }
-            else {
+            else
+            {
 
-                let dateOnly = { date: req.body.start.date.slice(0, 10) }
-                if (req.body.start.timeZone !== undefined) {
+                let dateOnly = {date: req.body.start.date.slice(0,10)}
+                if(req.body.start.timeZone !== undefined)
+                {
                     dateOnly["timeZone"] = req.body.start.timeZone
                 }
                 event["start"] = dateOnly;
             }
 
         }
-        if (req.body.end !== undefined) {
-            if (req.body.end.dateTime !== undefined) {
+        if(req.body.end !== undefined)
+        {
+            if(req.body.end.dateTime !== undefined)
+            {
                 event["end"] = req.body.end;
             }
-            else {
-                let dateOnly = { date: req.body.end.date.slice(0, 10) }
-                if (req.body.end.timeZone !== undefined) {
+            else
+            {
+                let dateOnly = {date: req.body.end.date.slice(0,10)}
+                if(req.body.end.timeZone !== undefined)
+                {
                     dateOnly["timeZone"] = req.body.end.timeZone
                 }
                 event["end"] = dateOnly;
             }
         }
-
+       
         // if req.body.recurrence different body
-        if (req.body.recurrence !== undefined) {
+        if(req.body.recurrence !== undefined)
+        {
             event["recurrence"] = req.body.recurrence; // must be an array
         }
         // about end: The (exclusive) end time of the event. For a recurring event, this is the end time of the first instance
         // add to event
 
         // attachments add if available
-        if (req.body.attachments !== undefined) {
+        if(req.body.attachments !== undefined)
+        {
             event["attachments"] = req.body.attachments; // must contain attachments.fileUrl
         }
 
         event["status"] = "confirmed"
-
+        
         let param = {
             calendarId: req.query.calendarId,
             resource: event
@@ -879,22 +867,24 @@ function addEventOnGoogleCalendar(req, res, tok) {
                 // console.log(err)
                 res.status(500).json(err);
             }
-            else {
+            else
+            {
                 res.status(200).send(result)
             }
-
+            
         });
 
 
 
-    } catch (err) {
+    } catch(err) {
         // console.log(err)
         res.status(500).json(err);
     }
 
 }
 
-function addEventOnMSGraphCalendar(req, res, tok) {
+function addEventOnMSGraphCalendar(req, res, tok)
+{
 
     const token = getMsGraphToken(tok)
     let calendarId = req.query.calendarId;
@@ -905,14 +895,18 @@ function addEventOnMSGraphCalendar(req, res, tok) {
         subject: req.body.summary,
     }
 
-    if (req.body.start !== undefined) {
-        if (req.body.start.dateTime !== undefined) {
+    if(req.body.start !== undefined)
+    {
+        if(req.body.start.dateTime !== undefined)
+        {
             eventsInfo["start"] = req.body.start;
         }
-        else {
+        else
+        {
 
-            let dateOnly = { dateTime: req.body.start.date.slice(0, 10) }
-            if (req.body.start.timeZone !== undefined) {
+            let dateOnly = {dateTime: req.body.start.date.slice(0,10)}
+            if(req.body.start.timeZone !== undefined)
+            {
                 dateOnly["timeZone"] = req.body.start.timeZone
             }
             eventsInfo["start"] = dateOnly;
@@ -920,13 +914,17 @@ function addEventOnMSGraphCalendar(req, res, tok) {
 
     }
 
-    if (req.body.end !== undefined) {
-        if (req.body.end.dateTime !== undefined) {
+    if(req.body.end !== undefined)
+    {
+        if(req.body.end.dateTime !== undefined)
+        {
             eventsInfo["end"] = req.body.end;
         }
-        else {
-            let dateOnly = { dateTime: req.body.end.date.slice(0, 10) }
-            if (req.body.end.timeZone !== undefined) {
+        else
+        {
+            let dateOnly = {dateTime: req.body.end.date.slice(0,10)}
+            if(req.body.end.timeZone !== undefined)
+            {
                 dateOnly["timeZone"] = req.body.end.timeZone
             }
             eventsInfo["end"] = dateOnly;
@@ -941,36 +939,39 @@ function addEventOnMSGraphCalendar(req, res, tok) {
             'Content-Type': 'application/json'
         },
         data: eventsInfo
-    }).then(response => {
-
+      }).then( response => {
+      
         // // console.log("output here for try post ")
         // // console.log(response.data)
-        res.send({ result: true, data: response.data })
+        res.send({result: true, data: response.data})
         // // console.log(response.data.value[0].emailAddress)
-    }).catch(error => {
+        }).catch(error => {
         // // console.log("error here ")
         // console.log(error)
-        res.send({ result: false })
-    })
-
+        res.send({result: false})
+        })
+    
 }
 
 
 app.post("/addEvent", (req, res) => {
 
     var tok = getTokenFile();
-
-    if (accountType === "google") {
+    
+    if(accountType === "google")
+    {
         addEventOnGoogleCalendar(req, res, tok)
     }
-    else if (accountType === "msgraph") {
+    else if (accountType === "msgraph")
+    {
         addEventOnMSGraphCalendar(req, res, tok)
 
     }
 
 });
 
-function updateEventOnGoogleCalendar(req, res, tok) {
+function updateEventOnGoogleCalendar(req, res, tok)
+{
     // requires calendar ID and event ID
     try {
         const tokens = getGoogleToken(tok)
@@ -985,22 +986,27 @@ function updateEventOnGoogleCalendar(req, res, tok) {
         oAuth2Client.setCredentials(tokens);
 
 
-        const calendar = google.calendar({ version: 'v3', auth: oAuth2Client });
+        const calendar = google.calendar({version: 'v3', auth: oAuth2Client});
 
-        if (req.query.calendarId != null && req.query.eventId != null) {
+        if(req.query.calendarId != null && req.query.eventId != null)
+        {
             let event = {
                 summary: req.body.summary,
-                description: req.body.description !== null ? req.body.description : "",
-
+                description: req.body.description!==null?req.body.description:"",
+                
             }
-
-            if (req.body.start !== undefined) {
-                if (req.body.start.dateTime !== undefined) {
+    
+            if(req.body.start !== undefined)
+            {
+                if(req.body.start.dateTime !== undefined)
+                {
                     event["start"] = req.body.start;
                 }
-                else {
-                    let dateOnly = { date: req.body.start.date.slice(0, 10) }
-                    if (req.body.start.timeZone !== undefined) {
+                else
+                {
+                    let dateOnly = {date: req.body.start.date.slice(0,10)}
+                    if(req.body.start.timeZone !== undefined)
+                    {
                         dateOnly["timeZone"] = req.body.start.timeZone
                     }
                     event["start"] = dateOnly;
@@ -1008,13 +1014,17 @@ function updateEventOnGoogleCalendar(req, res, tok) {
 
             }
 
-            if (req.body.end !== undefined) {
-                if (req.body.end.dateTime !== undefined) {
+            if(req.body.end !== undefined)
+            {
+                if(req.body.end.dateTime !== undefined)
+                {
                     event["end"] = req.body.end;
                 }
-                else {
-                    let dateOnly = { date: req.body.end.date.slice(0, 10) }
-                    if (req.body.end.timeZone !== undefined) {
+                else
+                {
+                    let dateOnly = {date: req.body.end.date.slice(0,10)}
+                    if(req.body.end.timeZone !== undefined)
+                    {
                         dateOnly["timeZone"] = req.body.end.timeZone
                     }
                     event["end"] = dateOnly;
@@ -1022,23 +1032,26 @@ function updateEventOnGoogleCalendar(req, res, tok) {
             }
 
             // if req.body.recurrence different body
-            if (req.body.recurrence !== undefined) {
+            if(req.body.recurrence !== undefined)
+            {
                 event["recurrence"] = req.body.recurrence; // must be an array
             }
             // about end: The (exclusive) end time of the event. For a recurring event, this is the end time of the first instance
             // add to event
 
             // attachments add if available
-            if (req.body.attachments !== undefined) {
+            if(req.body.attachments !== undefined)
+            {
                 event["attachments"] = req.body.attachments; // must contain attachments.fileUrl
             }
 
             event["status"] = "confirmed"
-            // about end: The (exclusive) end time of the event. For a recurring event, this is the end time of the first instance
-            // add to event
-
-            // attachments add if available
-            if (req.body.attachments !== null) {
+                // about end: The (exclusive) end time of the event. For a recurring event, this is the end time of the first instance
+                // add to event
+        
+                // attachments add if available
+            if(req.body.attachments !== null)
+            {
                 event["attachments"] = req.body.attachments; // must contain attachments.fileUrl
             }
 
@@ -1047,18 +1060,20 @@ function updateEventOnGoogleCalendar(req, res, tok) {
                 eventId: req.query.eventId,
                 resource: event
             }
-
+    
             const eventsA = calendar.events.patch(param, (err, result) => {
                 if (err) {
                     res.status(500).json(err);
                 }
-                else {
+                else
+                {
                     res.status(200).send(result)
                 }
             });
 
         }
-        else {
+        else
+        {
             // console.log("Error")
         }
 
@@ -1068,7 +1083,8 @@ function updateEventOnGoogleCalendar(req, res, tok) {
     }
 }
 
-function updateEventOnMSGraphCalendar(req, res, tok) {
+function updateEventOnMSGraphCalendar(req, res, tok)
+{
     const token = getMsGraphToken(tok)
     let calendarId = req.query.calendarId;
     let eventId = req.query.eventId;
@@ -1076,16 +1092,20 @@ function updateEventOnMSGraphCalendar(req, res, tok) {
     let myUrl = `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/events/${eventId}`
 
     let eventsInfo = {
-        subject: req.body.summary,
+        subject: req.body.summary,        
     }
 
-    if (req.body.start !== undefined) {
-        if (req.body.start.dateTime !== undefined) {
+    if(req.body.start !== undefined)
+    {
+        if(req.body.start.dateTime !== undefined)
+        {
             eventsInfo["start"] = req.body.start;
         }
-        else {
-            let dateOnly = { dateTime: req.body.start.date.slice(0, 10) }
-            if (req.body.start.timeZone !== undefined) {
+        else
+        {
+            let dateOnly = {dateTime: req.body.start.date.slice(0,10)}
+            if(req.body.start.timeZone !== undefined)
+            {
                 dateOnly["timeZone"] = req.body.start.timeZone
             }
             eventsInfo["start"] = dateOnly;
@@ -1093,13 +1113,17 @@ function updateEventOnMSGraphCalendar(req, res, tok) {
 
     }
 
-    if (req.body.end !== undefined) {
-        if (req.body.end.dateTime !== undefined) {
+    if(req.body.end !== undefined)
+    {
+        if(req.body.end.dateTime !== undefined)
+        {
             eventsInfo["end"] = req.body.end;
         }
-        else {
-            let dateOnly = { dateTime: req.body.end.date.slice(0, 10) }
-            if (req.body.end.timeZone !== undefined) {
+        else
+        {
+            let dateOnly = {dateTime: req.body.end.date.slice(0,10)}
+            if(req.body.end.timeZone !== undefined)
+            {
                 dateOnly["timeZone"] = req.body.end.timeZone
             }
             eventsInfo["end"] = dateOnly;
@@ -1114,17 +1138,17 @@ function updateEventOnMSGraphCalendar(req, res, tok) {
             'Content-Type': 'application/json'
         },
         data: eventsInfo
-    }).then(response => {
-
+      }).then( response => {
+      
         // // console.log("output here for try post ")
         // // console.log(response.data)
-        res.send({ result: true, data: response.data })
+        res.send({result: true, data: response.data})
         // // console.log(response.data.value[0].emailAddress)
-    }).catch(error => {
+        }).catch(error => {
         // // console.log("error here ")
         // console.log(error)
-        res.send({ result: false })
-    })
+        res.send({result: false})
+        })
 
 
 }
@@ -1132,11 +1156,13 @@ function updateEventOnMSGraphCalendar(req, res, tok) {
 app.put("/updateEvent", (req, res) => {
 
     var tok = getTokenFile();
-
-    if (accountType === "google") {
+    
+    if(accountType === "google")
+    {
         updateEventOnGoogleCalendar(req, res, tok)
     }
-    else if (accountType === "msgraph") {
+    else if (accountType === "msgraph")
+    {
         updateEventOnMSGraphCalendar(req, res, tok)
 
     }
@@ -1144,7 +1170,8 @@ app.put("/updateEvent", (req, res) => {
 });
 
 
-function deleteEventOnGoogleCalendar(req, res, tok) {
+function deleteEventOnGoogleCalendar(req, res, tok)
+{
     // requires calendar ID and event ID
     try {
         const tokens = getGoogleToken(tok)
@@ -1159,26 +1186,29 @@ function deleteEventOnGoogleCalendar(req, res, tok) {
         oAuth2Client.setCredentials(tokens);
 
 
-        const calendar = google.calendar({ version: 'v3', auth: oAuth2Client });
+        const calendar = google.calendar({version: 'v3', auth: oAuth2Client});
 
-        if (req.query.calendarId != null && req.query.eventId != null) {
+        if(req.query.calendarId != null && req.query.eventId != null)
+        {
             let param = {
                 calendarId: req.query.calendarId,
                 eventId: req.query.eventId
             }
-
+    
             const eventsA = calendar.events.delete(param, (err, result) => {
                 if (err) {
                     // console.log(err)
                     res.status(500).json(err);
                 }
-                else {
+                else
+                {
                     // // console.log("No Error")
                     res.status(200).send(result)
                 }
             });
         }
-        else {
+        else
+        {
             // console.log("Error")
         }
 
@@ -1188,8 +1218,9 @@ function deleteEventOnGoogleCalendar(req, res, tok) {
     }
 }
 
-function deleteEventOnMSGraphCalendar(req, res, tok) {
-
+function deleteEventOnMSGraphCalendar(req, res, tok)
+{
+    
 }
 
 app.delete("/deleteEvent", (req, res) => {
@@ -1197,10 +1228,12 @@ app.delete("/deleteEvent", (req, res) => {
     var tok = getTokenFile();
     // console.log("listTaskList: ", tok)
 
-    if (accountType === "google") {
+    if(accountType === "google")
+    {
         deleteEventOnGoogleCalendar(req, res, tok)
     }
-    else if (accountType === "msgraph") {
+    else if (accountType === "msgraph")
+    {
         deleteEventOnMSGraphCalendar(req, res, tok)
 
     }
@@ -1217,30 +1250,35 @@ app.delete("/deleteEvent", (req, res) => {
  */
 async function fetchTaskList(authToken) {
 
-    const service = google.tasks({ version: 'v1', auth: authToken });
+    const service = google.tasks({version: 'v1', auth: authToken});
 
     return new Promise((resolve, reject) => {
         const eventsA = service.tasklists.list({
         }, (err, res) => {
 
-            if (err) {
+            if(err)
+            {
                 // console.log(err);
                 resolve([]);
             }
-            else {
+            else
+            {
                 resolve(res.data.items);
             }
 
-
+            
         });
     });
 
 }
 
-function listGoogleCalendar(req, res, tok) {
-    try {
-        //read token file you saved earlier in passport_setup.js
+function listGoogleCalendar(req, res, tok)
+{
+    try{
 
+        
+        //read token file you saved earlier in passport_setup.js
+        
         const tokens = getGoogleToken(tok)
         // // console.log("listCalendarList ", tokens)
         //extract credential details
@@ -1253,65 +1291,70 @@ function listGoogleCalendar(req, res, tok) {
 
         oAuth2Client.setCredentials(tokens);
 
-        const calendar = google.calendar({ version: 'v3', auth: oAuth2Client });
+        const calendar = google.calendar({version: 'v3', auth: oAuth2Client});
 
-        const calendarList = calendar.calendarList.list({ maxResults: 100 }, (err, qres) => {
+        const calendarList = calendar.calendarList.list({maxResults: 100}, (err, qres) => {
             if (err) {
-                res.send({ result: "error" });
-
+                res.send({result: "error"});
+                
             }
-            else {
+            else
+            {
                 var calInfoReturn = [];
                 qres.data.items.forEach(calendarItem => {
 
-                    calInfoReturn.push({ calendarId: calendarItem.id, summary: calendarItem.summary })
+                    calInfoReturn.push({calendarId:calendarItem.id, summary:calendarItem.summary})
                     // console.log("calendarId", calendarItem.id)
                     // console.log("summary: ", calendarItem.summary)
                 })
-                res.send({ "calendarList": calInfoReturn });
+                res.send({"calendarList": calInfoReturn});
             }
-
-
-        });
+            
+            
+          });
     }
-    catch (error) {
+    catch(error)
+    {
         // console.log(error)
     }
 
 }
 
-function listMsGraphCalendar(req, res, tok) {
-    try {
+function listMsGraphCalendar(req, res, tok)
+{
+    try 
+    {
         const token = getMsGraphToken(tok)
         // console.log("listMsGraphCalendar", token)
 
         axios.get('https://graph.microsoft.com/v1.0/me/calendars',
-            {
-                headers: {
-                    Authorization: `Bearer ${token.access_token}`
-                },
+        {
+            headers: {
+              Authorization: `Bearer ${token.access_token}`
             },
-        ).then(response => {
-
+          },
+          ).then( response => {
+      
             var calInfoReturn = [];
 
-            response.data.value.forEach(calendarItem => {
-                calInfoReturn.push({ calendarId: calendarItem.id, summary: calendarItem.name })
+            response.data.value.forEach( calendarItem => {
+                calInfoReturn.push({calendarId:calendarItem.id, summary:calendarItem.name})
 
             })
 
-            res.send({ "calendarList": calInfoReturn });
+            res.send({"calendarList": calInfoReturn});
 
             // // console.log(response.data.value[0].emailAddress)
-        }).catch(error => {
+          }).catch(error => {
             // console.log("error here ")
             // console.log(error)
-        })
+          })
 
 
 
     }
-    catch (error) {
+    catch (error)
+    {
         // console.log(error)
     }
 }
@@ -1322,13 +1365,16 @@ app.get("/listCalendarList", (req, res) => {
 
     // console.log("listCalendarList", accountType, tok)
 
-    if (accountType === "google") {
+    if(accountType === "google")
+    {
         listGoogleCalendar(req, res, tok)
     }
-    else if (accountType === "msgraph") {
+    else if (accountType === "msgraph")
+    {
         listMsGraphCalendar(req, res, tok)
     }
-    else {
+    else
+    {
         // console.log("Error no tocken")
     }
 
@@ -1337,7 +1383,7 @@ app.get("/listCalendarList", (req, res) => {
 //list of task for the Living room
 app.get("/listTaskLivingRoom", (req, res) => {
 
-    try {
+    try {        
         var tok = getTokenFile();
         const tokens = getGoogleToken(tok)
         //extract credential details
@@ -1350,10 +1396,11 @@ app.get("/listTaskLivingRoom", (req, res) => {
 
         oAuth2Client.setCredentials(tokens);
 
-        const service = google.tasks({ version: 'v1', auth: oAuth2Client });
+        const service = google.tasks({version: 'v1', auth: oAuth2Client});
 
         var taskListId = 'MDczMDgxOTk0ODExMTA2MTM1ODY6MDow'
-        if (req.query.taskListId !== null) {
+        if(req.query.taskListId !== null)
+        {
             taskListId = req.query.taskListId
         }
 
@@ -1362,17 +1409,17 @@ app.get("/listTaskLivingRoom", (req, res) => {
             tasklist: taskListId,
         }, (err, result) => {
 
-            if (err) {
+            if (err){
 
                 return // console.log('The API returned an error: ' + err);
             } else {
 
                 const taskList = result.data.items;
-                res.send({ data: taskList });
+                res.send({data:taskList});
             }
+           
 
-
-
+            
             // if (taskList.length) {
             //     // console.log('Upcoming ' + taskList.length + ' task:');
             //     taskList.map((task, i) => {
@@ -1383,17 +1430,18 @@ app.get("/listTaskLivingRoom", (req, res) => {
             //   }
         });
 
+      
 
 
-
-    } catch (err) {
+    } catch(err) {
         res.status(500).json(err);
     }
 });
 
-function listGoogleTaskList(req, res, tok) {
+function listGoogleTaskList(req, res, tok)
+{
     try {
-
+        
         const tokens = getGoogleToken(tok)
         //extract credential details
         const { client_secret, client_id, redirect_uris } = credentials.web;
@@ -1421,27 +1469,29 @@ function listGoogleTaskList(req, res, tok) {
             res.send(listOfTaskList);
         });
 
+        
 
-
-    } catch (err) {
+    } catch(err) {
         res.status(500).json(err);
     }
 
 }
 
-function listMsGraphTaskList(req, res, tok) {
-    try {
+function listMsGraphTaskList(req, res, tok)
+{
+    try 
+    {
         const token = getMsGraphToken(tok)
         // // console.log("listMsGraphCalendar", token)
 
         axios.get('https://graph.microsoft.com/v1.0/me/todo/lists',
-            {
-                headers: {
-                    Authorization: `Bearer ${token.access_token}`
-                },
+        {
+            headers: {
+              Authorization: `Bearer ${token.access_token}`
             },
-        ).then(response => {
-
+          },
+          ).then( response => {
+      
 
             var listOfTaskList = []
             response.data.value.forEach((taskList) => {
@@ -1456,15 +1506,16 @@ function listMsGraphTaskList(req, res, tok) {
             res.send(listOfTaskList);
 
 
-        }).catch(error => {
+          }).catch(error => {
             // console.log("error here ")
             // console.log(error)
-        })
+          })
 
 
 
     }
-    catch (error) {
+    catch (error)
+    {
         // console.log(error)
     }
 }
@@ -1479,22 +1530,24 @@ app.get("/listTaskList", (req, res) => {
     var tok = getTokenFile();
     // console.log("listTaskList: ", tok)
 
-    if (accountType === "google") {
+    if(accountType === "google")
+    {
         listGoogleTaskList(req, res, tok)
     }
-    else if (accountType === "msgraph") {
+    else if (accountType === "msgraph")
+    {
         listMsGraphTaskList(req, res, tok)
 
     }
 
-
+    
 });
 
 async function fetchListTask(authToken, taskId) {
 
     var listOfTask = []
 
-    const service = google.tasks({ version: 'v1', auth: authToken });
+    const service = google.tasks({version: 'v1', auth: authToken});
     return new Promise((resolve, reject) => {
         service.tasks.list({
             tasklist: taskId,
@@ -1503,12 +1556,12 @@ async function fetchListTask(authToken, taskId) {
                 // console.log('The API returned an error: ' + err);
                 resolve([]);
             }
-            else {
+            else{
 
                 // console.log("now result:", result)
-
+    
                 var itemInfo = []
-
+    
                 result.data.items.forEach(item => {
                     let info = {
                         title: item.title,
@@ -1522,8 +1575,8 @@ async function fetchListTask(authToken, taskId) {
                     }
                     itemInfo.push(info)
                 })
-
-                resolve({ "taskId": taskId, taskList: itemInfo });
+    
+                resolve({"taskId": taskId, taskList: itemInfo});
             }
 
         });
@@ -1532,7 +1585,8 @@ async function fetchListTask(authToken, taskId) {
 
 }
 
-function listTasksOnGoogleList(req, res, tok, taskId) {
+function listTasksOnGoogleList(req, res, tok, taskId) 
+{
     try {
         const tokens = getGoogleToken(tok)
         //extract credential details
@@ -1549,30 +1603,34 @@ function listTasksOnGoogleList(req, res, tok, taskId) {
 
         // // console.log("loop: ", Array.isArray(taskId))
 
-        if (Array.isArray(taskId) === true) {
+        if(Array.isArray(taskId) === true)
+        {
             taskId.forEach(task => {
                 promises.push(fetchListTask(oAuth2Client, task));
             })
 
         }
-        else {
+        else
+        {
             promises.push(fetchListTask(oAuth2Client, taskId));
         }
 
         Promise.all(promises).then((turnOuts) => {
-            res.send({ result: turnOuts });
-        });
+            res.send({result: turnOuts});
+        }); 
 
 
-    } catch (err) {
+    } catch(err) {
         res.status(500).json(err);
-    }
+    }   
 }
 
-function isCompleted(item) {
+function isCompleted(item)
+{
 
     var ret = false;
-    if (item.status === "completed") {
+    if(item.status === "completed")
+    {
         ret = true;
     }
 
@@ -1585,15 +1643,15 @@ async function fetchMsGraphListTask(tok, cmdStr, id) {
     return new Promise((resolve, reject) => {
 
         const token = getMsGraphToken(tok)
-
+        
         axios.get(cmdStr,
-            {
-                headers: {
-                    Authorization: `Bearer ${token.access_token}`
-                },
+        {
+            headers: {
+                Authorization: `Bearer ${token.access_token}`
             },
-        ).then(response => {
-
+            },
+            ).then( response => {
+        
             var itemInfo = []
             // var listOfTaskList = []
 
@@ -1601,40 +1659,42 @@ async function fetchMsGraphListTask(tok, cmdStr, id) {
                 let info = {
                     title: item.title, //available
                     id: item.id, // available
-                    updated: item.lastModifiedDateTime !== undefined ? item.lastModifiedDateTime : item.createdDateTime,
+                    updated: item.lastModifiedDateTime!==undefined?item.lastModifiedDateTime:item.createdDateTime,
                     status: item.status, // available, completed, notStarted
-                    due: item.dueDateTime !== undefined ? item.dueDateTime.dateTime : null, // available
+                    due: item.dueDateTime!==undefined?item.dueDateTime.dateTime:null, // available
                     completed: item.completed, // available, returned date completed
-                    hidden: item.hidden !== undefined ? item.hidden : isCompleted(item), //worked around
+                    hidden: item.hidden!==undefined?item.hidden:isCompleted(item), //worked around
                     notes: item.notes, // body.content
                 }
                 itemInfo.push(info)
             })
 
 
-            resolve({ "taskId": id, taskList: itemInfo });
+            resolve({"taskId": id, taskList: itemInfo});
 
 
-        }).catch(error => {
+            }).catch(error => {
             // console.log("error here ")
             // console.log(error)
             resolve([]);
-        })
-
-
+            })
+    
+        
     })
-
+    
 
 
 }
 
-function listTasksOnMsGraphList(req, res, tok, taskId) {
-
+function listTasksOnMsGraphList(req, res, tok, taskId) 
+{
+    
     try {
-
+        
         var promises = [];
 
-        if (Array.isArray(taskId) === true) {
+        if(Array.isArray(taskId) === true)
+        {
             taskId.forEach(task => {
 
                 let cmdStr = `https://graph.microsoft.com/v1.0/me/todo/lists/${task}/tasks`
@@ -1642,19 +1702,20 @@ function listTasksOnMsGraphList(req, res, tok, taskId) {
             })
 
         }
-        else {
+        else
+        {
             let cmdStr = `https://graph.microsoft.com/v1.0/me/todo/lists/${taskId}/tasks`
             promises.push(fetchMsGraphListTask(tok, cmdStr, taskId));
         }
 
         Promise.all(promises).then((turnOuts) => {
-            res.send({ result: turnOuts });
-        });
+            res.send({result: turnOuts});
+        }); 
 
 
-    } catch (err) {
+    } catch(err) {
         res.status(500).json(err);
-    }
+    } 
 
 }
 
@@ -1665,12 +1726,15 @@ app.get("/listTask", (req, res) => {
 
     // console.log("listTask", tok, accountType)
 
-    if (taskId !== null) {
-        if (accountType === "google") {
-            listTasksOnGoogleList(req, res, tok, taskId)
+    if(taskId !== null)
+    {
+        if(accountType === "google")
+        {
+            listTasksOnGoogleList(req, res, tok, taskId) 
         }
-        else if (accountType === "msgraph") {
-            listTasksOnMsGraphList(req, res, tok, taskId)
+        else if(accountType === "msgraph")
+        {
+            listTasksOnMsGraphList(req, res, tok, taskId) 
         }
 
     }
@@ -1684,7 +1748,7 @@ app.get("/listTask", (req, res) => {
  * @param    {} req listName: string = Name of List to be Created
  * @returns  {} res
  */
-app.get("/CreateTaskList", (req, res) => {
+ app.get("/CreateTaskList", (req, res) => {
 
     try {
         var tok = getTokenFile();
@@ -1699,10 +1763,12 @@ app.get("/CreateTaskList", (req, res) => {
 
         oAuth2Client.setCredentials(tokens);
 
-        if (req.query.listName != null) {
+        if(req.query.listName != null)
+        {
             // console.log(req.query.listName);
         }
-        else {
+        else
+        {
             res.send([]); // send error
         }
 
@@ -1710,9 +1776,9 @@ app.get("/CreateTaskList", (req, res) => {
         //     res.send(result);
         // });
 
+        
 
-
-    } catch (err) {
+    } catch(err) {
         res.status(500).json(err);
     }
 });
@@ -1734,10 +1800,11 @@ app.get("/listIngredients", (req, res) => {
 
         oAuth2Client.setCredentials(tokens);
 
-        const service = google.tasks({ version: 'v1', auth: oAuth2Client });
+        const service = google.tasks({version: 'v1', auth: oAuth2Client});
 
         var taskListId = 'emVtMzFQTXR0N2pjYkZCWg'
-        if (req.query.taskListId !== undefined) {
+        if(req.query.taskListId !== undefined)
+        {
             taskListId = req.query.taskListId;
         }
 
@@ -1746,17 +1813,18 @@ app.get("/listIngredients", (req, res) => {
             tasklist: taskListId,
         }, (err, result) => {
 
-            if (err) {
-
+            if (err){
+                
                 return // console.log('The API returned an error: ' + err);
 
-            }
-            else {
+            } 
+            else
+            {
                 const taskList = result.data.items;
-                res.send({ data: taskList });
+                res.send({data:taskList});
 
             }
-
+            
             // if (taskList.length) {
             //     // console.log('Upcoming ' + taskList.length + ' task:');
             //     taskList.map((task, i) => {
@@ -1765,39 +1833,42 @@ app.get("/listIngredients", (req, res) => {
             //   } else {
             //     // console.log('No upcoming task found.');
             //   }
-
+            
         });
 
         // res.send("got Task List");
 
-    } catch (err) {
+    } catch(err) {
         res.status(500).json(err);
     }
 });
 
 async function fetchDeleteTask(authToken, taskListId, taskId) {
 
-    const service = google.tasks({ version: 'v1', auth: authToken });
+    const service = google.tasks({version: 'v1', auth: authToken});
 
     return new Promise((resolve, reject) => {
         const eventsA = service.tasks.delete({
             tasklist: taskListId,
             task: taskId,
         }, (err, res) => {
-            if (err) {
+            if(err)
+            {
                 // console.log(err);
                 resolve(false);
             }
-            else {
+            else
+            {
                 resolve(true);
             }
         });
 
     });
-
+    
 }
 
-function deleteTaskOnGoogleTaskList(req, res, tok) {
+function deleteTaskOnGoogleTaskList(req, res, tok)
+{
     const tokens = getGoogleToken(tok)
     //extract credential details
     const { client_secret, client_id, redirect_uris } = credentials.web;
@@ -1809,42 +1880,44 @@ function deleteTaskOnGoogleTaskList(req, res, tok) {
     // setup credentials to OAuth2 object as argument for fetchEvent
     oAuth2Client.setCredentials(tokens);
 
-    if ((req.query.taskListId != null) && (req.query.taskId != null)) {
+    if((req.query.taskListId != null) && (req.query.taskId != null))
+    {
         // console.log(req.query.taskListId, req.query.taskId);
-        fetchDeleteTask(oAuth2Client, req.query.taskListId, req.query.taskId).then((result) => {
+        fetchDeleteTask(oAuth2Client, req.query.taskListId, req.query.taskId).then( (result) => {
             // console.log("Delete Completed");
         })
-
+        
     }
-    else {
+    else
+    {
         res.send("missing arguments");
     }
 }
 
-function deleteTaskOnMSGraphTaskList(req, res, tok) {
+function deleteTaskOnMSGraphTaskList(req, res, tok)
+{
     // DELETE https://graph.microsoft.com/v1.0/me/todo/lists/{todoTaskListId}/tasks/{todoTaskId}
 
     const token = getMsGraphToken(tok)
 
-    let todoTaskListId = req.query.taskListId
+    let todoTaskListId  = req.query.taskListId
     let todoTaskId = req.query.taskId
     let cmdStr = `https://graph.microsoft.com/v1.0/me/todo/lists/${todoTaskListId}/tasks/${todoTaskId}`
 
     axios.delete(cmdStr, {
         headers: {
             Authorization: `Bearer ${token.access_token}`
-        },
-    },).then(response => {
+        },},).then( response => {
 
-        // console.log(response)
+            // console.log(response)
 
-    }).catch(error => {
+        }).catch(error => {
 
-        // console.log(error)
+            // console.log(error)
 
-    })
+        })
 
-
+    
 
 }
 
@@ -1859,13 +1932,15 @@ app.get("/deleteTaskOnTaskList", (req, res) => {
     var tok = getTokenFile();
     // console.log("deleteTaskOnTaskList: ")
 
-    if (accountType === "google") {
+    if(accountType === "google")
+    {
         deleteTaskOnGoogleTaskList(req, res, tok)
     }
-    else if (accountType === "msgraph") {
+    else if (accountType === "msgraph")
+    {
         deleteTaskOnMSGraphTaskList(req, res, tok)
 
-    }
+    }    
 
 
 });
@@ -1876,28 +1951,31 @@ app.get("/deleteTaskOnTaskList", (req, res) => {
  */
 async function fetchAddTask(authToken, taskListId, taskName) {
 
-    const service = google.tasks({ version: 'v1', auth: authToken });
+    const service = google.tasks({version: 'v1', auth: authToken});
 
     // const taskBody = { title: taskName};
 
     return new Promise((resolve) => {
-        const eventsA = service.tasks.insert({
+        const eventsA = service.tasks.insert ({
             tasklist: taskListId,
-            resource: { title: taskName },
+            resource: { title: taskName},
         }, (err, res) => {
-            if (err) {
-                resolve({ result: false, id: "", title: "" });
+            if(err)
+            {
+                resolve({result: false, id: "", title: ""});
             }
-            else {
-                resolve({ result: true, id: res.data.id, title: res.data.title, status: res.data.status });
+            else
+            {
+                resolve({result: true, id: res.data.id, title: res.data.title, status: res.data.status});
             }
         });
 
     });
-
+    
 }
 
-function addTaskOnGoogleTaskList(req, res, tok) {
+function addTaskOnGoogleTaskList(req, res, tok)
+{
     const tokens = getGoogleToken(tok)
     //extract credential details
     const { client_secret, client_id, redirect_uris } = credentials.web;
@@ -1909,26 +1987,29 @@ function addTaskOnGoogleTaskList(req, res, tok) {
     // setup credentials to OAuth2 object as argument for fetchEvent
     oAuth2Client.setCredentials(tokens);
 
-    if ((req.query.taskListId != null) && (req.query.taskName != null)) {
-        fetchAddTask(oAuth2Client, req.query.taskListId, req.query.taskName).then((result) => {
+    if((req.query.taskListId != null) && (req.query.taskName != null))
+    {
+        fetchAddTask(oAuth2Client, req.query.taskListId, req.query.taskName).then( (result) => {
             res.send(result);
         })
-
+        
     }
-    else {
+    else
+    {
         res.send("missing arguments");
     }
 
 }
 
 // TODO: Add Task to List 
-function addTaskOnMSGraphTaskList(req, res, tok) {
+function addTaskOnMSGraphTaskList(req, res, tok)
+{
     //POST https://graph.microsoft.com/v1.0/me/todo/lists/{todoTaskListId}/tasks
 
     const token = getMsGraphToken(tok)
 
-    let todoTaskListId = req.query.taskListId
-
+    let todoTaskListId  = req.query.taskListId
+    
     let myUrl = `https://graph.microsoft.com/v1.0/me/todo/lists/${todoTaskListId}/tasks/`
     let taskName = req.query.taskName
 
@@ -1942,17 +2023,17 @@ function addTaskOnMSGraphTaskList(req, res, tok) {
         data: {
             title: taskName
         }
-    }).then(response => {
-
-        // // console.log("output here for try post ")
-        // // console.log(response.data)
-        res.send({ result: true, id: response.data.id, title: response.data.title, status: response.data.status })
-        // // console.log(response.data.value[0].emailAddress)
-    }).catch(error => {
-        // // console.log("error here ")
-        // console.log(error)
-        res.send({ result: false, id: "", title: "" })
-    })
+      }).then( response => {
+      
+                // // console.log("output here for try post ")
+                // // console.log(response.data)
+                res.send({result: true, id: response.data.id, title: response.data.title, status: response.data.status})
+                // // console.log(response.data.value[0].emailAddress)
+              }).catch(error => {
+                // // console.log("error here ")
+                // console.log(error)
+                res.send({result: false, id: "", title: ""})
+              })
 
 }
 
@@ -1967,10 +2048,12 @@ app.get("/addTaskOnTaskList", (req, res) => {
     var tok = getTokenFile();
     // console.log("addTaskOnTaskList: ")
 
-    if (accountType === "google") {
+    if(accountType === "google")
+    {
         addTaskOnGoogleTaskList(req, res, tok)
     }
-    else if (accountType === "msgraph") {
+    else if (accountType === "msgraph")
+    {
         addTaskOnMSGraphTaskList(req, res, tok)
 
     }
@@ -1983,29 +2066,32 @@ app.get("/addTaskOnTaskList", (req, res) => {
  * @param  {} taskListId
  * @param  {} taskName
  */
-async function fetchEditTask(authToken, taskListId, taskID, newtaskName) {
+ async function fetchEditTask(authToken, taskListId, taskID, newtaskName) {
 
-    const service = google.tasks({ version: 'v1', auth: authToken });
+    const service = google.tasks({version: 'v1', auth: authToken});
 
     return new Promise((resolve) => {
-        const eventsA = service.tasks.patch({
+        const eventsA = service.tasks.patch  ({
             tasklist: taskListId,
             task: taskID,
-            resource: { title: newtaskName },
+            resource: { title: newtaskName},
         }, (err, res) => {
-            if (err) {
-                resolve({ result: false, id: "", title: "" });
+            if(err)
+            {
+                resolve({result: false, id: "", title: ""});
             }
-            else {
-                resolve({ result: true, id: res.data.id, title: res.data.title, status: res.data.status });
+            else
+            {
+                resolve({result: true, id: res.data.id, title: res.data.title, status: res.data.status});
             }
         });
 
     });
-
+    
 }
 
-function editTaskOnGoogleTaskList(req, res, tok) {
+function editTaskOnGoogleTaskList(req, res, tok)
+{
     const tokens = getGoogleToken(tok)
     //extract credential details
     const { client_secret, client_id, redirect_uris } = credentials.web;
@@ -2017,27 +2103,31 @@ function editTaskOnGoogleTaskList(req, res, tok) {
     // setup credentials to OAuth2 object as argument for fetchEvent
     oAuth2Client.setCredentials(tokens);
 
-    if ((req.query.taskListId != null) && (req.query.taskId != null) && (req.query.newTitle != null)) {
-        fetchEditTask(oAuth2Client, req.query.taskListId, req.query.taskId, req.query.newTitle).then((result) => {
+    if((req.query.taskListId != null) && (req.query.taskId != null) && (req.query.newTitle != null))
+    {
+        fetchEditTask(oAuth2Client, req.query.taskListId, req.query.taskId, req.query.newTitle).then( (result) => {
             res.send(result);
         })
-
+        
     }
-    else {
+    else
+    {
         res.send("missing arguments");
     }
 }
 
-function editTaskOnMSGraphTaskList(req, res, tok) {
+function editTaskOnMSGraphTaskList(req, res, tok)
+{
     const token = getMsGraphToken(tok)
 
-    let todoTaskListId = req.query.taskListId
+    let todoTaskListId  = req.query.taskListId
     let todoTaskId = req.query.taskId
 
     let myUrl = `https://graph.microsoft.com/v1.0/me/todo/lists/${todoTaskListId}/tasks/${todoTaskId}`
 
     let newTitle = " "
-    if (req.query.newTitle !== undefined) {
+    if(req.query.newTitle !== undefined)
+    {
         newTitle = req.query.newTitle
     }
 
@@ -2053,18 +2143,18 @@ function editTaskOnMSGraphTaskList(req, res, tok) {
         data: {
             title: newTitle
         }
-    }).then(response => {
-
-        // // console.log("output here for try ")
-        // // console.log(response.data)
-        res.send({ result: true, id: response.data.id, title: response.data.title, status: response.data.status })
-        // // console.log(response.data.value[0].emailAddress)
-    }).catch(error => {
-        // // console.log("error here ")
-        // console.log(error)
-        res.send({ result: false, id: "", title: "" })
-    })
-
+      }).then( response => {
+      
+                // // console.log("output here for try ")
+                // // console.log(response.data)
+                res.send({result: true, id: response.data.id, title: response.data.title, status: response.data.status})
+                // // console.log(response.data.value[0].emailAddress)
+              }).catch(error => {
+                // // console.log("error here ")
+                // console.log(error)
+                res.send({result: false, id: "", title: ""})
+              })
+    
 }
 
 /**
@@ -2074,19 +2164,21 @@ function editTaskOnMSGraphTaskList(req, res, tok) {
  * @param  {} req - newTitle
  * @return {} res - {status: bool, id: string, title: string}
  */
-app.get("/editTaskTitle", (req, res) => {
+ app.get("/editTaskTitle", (req, res) => {
 
     var tok = getTokenFile();
     // console.log("editTaskTitle: ",accountType , tok)
 
-    if (accountType === "google") {
+    if(accountType === "google")
+    {
         editTaskOnGoogleTaskList(req, res, tok)
     }
-    else if (accountType === "msgraph") {
+    else if (accountType === "msgraph")
+    {
         editTaskOnMSGraphTaskList(req, res, tok)
 
     }
-
+    
 
 
 });
@@ -2096,32 +2188,35 @@ app.get("/editTaskTitle", (req, res) => {
  * @param  {} taskListId
  * @param  {} taskName
  */
-async function fetchSetTaskStatus(authToken, taskListId, taskID, newtaskStatus) {
+ async function fetchSetTaskStatus(authToken, taskListId, taskID, newtaskStatus) {
 
-    const service = google.tasks({ version: 'v1', auth: authToken });
+    const service = google.tasks({version: 'v1', auth: authToken});
 
     var newStatus = "needsAction";
-    if (newtaskStatus === "true") {
+    if(newtaskStatus === "true")
+    {
         newStatus = "completed";
     }
 
 
     return new Promise((resolve) => {
-        const eventsA = service.tasks.patch({
+        const eventsA = service.tasks.patch  ({
             tasklist: taskListId,
             task: taskID,
-            resource: { status: newStatus },
+            resource: { status: newStatus},
         }, (err, res) => {
-            if (err) {
-                resolve({ result: false, id: "", title: "" });
+            if(err)
+            {
+                resolve({result: false, id: "", title: ""});
             }
-            else {
-                resolve({ result: true, id: res.data.id, title: res.data.title, status: res.data.status });
+            else
+            {
+                resolve({result: true, id: res.data.id, title: res.data.title, status: res.data.status});
             }
         });
 
     });
-
+    
 }
 
 function setGoogleTaskStatus(req, res, tok) {
@@ -2137,13 +2232,15 @@ function setGoogleTaskStatus(req, res, tok) {
     // setup credentials to OAuth2 object as argument for fetchEvent
     oAuth2Client.setCredentials(tokens);
 
-    if ((req.query.taskListId != null) && (req.query.taskId != null) && (req.query.taskStatus != null)) {
-        fetchSetTaskStatus(oAuth2Client, req.query.taskListId, req.query.taskId, req.query.taskStatus).then((result) => {
+    if((req.query.taskListId != null) && (req.query.taskId != null) && (req.query.taskStatus != null))
+    {
+        fetchSetTaskStatus(oAuth2Client, req.query.taskListId, req.query.taskId, req.query.taskStatus).then( (result) => {
             res.send(result);
         })
-
+        
     }
-    else {
+    else
+    {
         res.send("missing arguments");
     }
 
@@ -2153,14 +2250,15 @@ function setMSGraphTaskStatus(req, res, tok) {
 
     const token = getMsGraphToken(tok)
 
-    let todoTaskListId = req.query.taskListId
+    let todoTaskListId  = req.query.taskListId
     let todoTaskId = req.query.taskId
 
     let myUrl = `https://graph.microsoft.com/v1.0/me/todo/lists/${todoTaskListId}/tasks/${todoTaskId}`
 
     var newtaskStatus = req.query.taskStatus
     var newStatus = "notStarted";
-    if (newtaskStatus === "true") {
+    if(newtaskStatus === "true")
+    {
         newStatus = "completed";
     }
 
@@ -2178,19 +2276,19 @@ function setMSGraphTaskStatus(req, res, tok) {
         data: {
             status: newStatus
         }
-    }).then(response => {
-
+      }).then( response => {
+      
         // // console.log("output here for try ")
         // // console.log(response.data)
-        res.send({ result: true, id: response.data.id, title: response.data.title, status: response.data.status })
+        res.send({result: true, id: response.data.id, title: response.data.title, status: response.data.status})
 
         // // console.log(response.data.value[0].emailAddress)
-    }).catch(error => {
+        }).catch(error => {
         // // console.log("error here ")
         // console.log(error)
-        res.send({ result: false, id: "", title: "" })
-    })
-
+        res.send({result: false, id: "", title: ""})
+        })
+    
 }
 
 /**
@@ -2200,20 +2298,22 @@ function setMSGraphTaskStatus(req, res, tok) {
  * @param  {} req - taskStatus : boolean
  * @return {} res - {status: bool, id: string, title: string}
  */
-app.get("/setTaskStatus", (req, res) => {
+ app.get("/setTaskStatus", (req, res) => {
 
     var tok = getTokenFile();
 
     // console.log("setTaskStatus: ")
 
-    if (accountType === "google") {
+    if(accountType === "google")
+    {
         setGoogleTaskStatus(req, res, tok)
     }
-    else if (accountType === "msgraph") {
+    else if (accountType === "msgraph")
+    {
         setMSGraphTaskStatus(req, res, tok)
 
     }
-
+    
 
 
 });
@@ -2226,38 +2326,43 @@ var pathToUserlist = path.resolve(__dirname, './userList.json');
  * @param       {} req - encrypted password
  * @returns taskId
  */
-app.post("/UpdateUserSetting", (req, res) => {
+ app.post("/UpdateUserSetting", (req, res) => {
 
-    if ((req.body.userName != null) && (req.body.password != null)) {
+    if((req.body.userName != null) && (req.body.password != null))
+    {
         // read file list
         let userListFile = JSON.parse(fs.readFileSync(pathToUserlist));
 
         let indx = userListFile.userList.findIndex((element) => element.userName.toLowerCase() === req.body.userName.toLowerCase())
-        if (indx !== -1) {
-            if (userListFile.userList[indx].password === req.body.password) {
+        if(indx !== -1)
+        {
+            if(userListFile.userList[indx].password === req.body.password)
+            {
                 userListFile.userList[indx]["taskSetting"] = req.body.taskSetting
                 let newData = JSON.stringify(userListFile);
                 fs.writeFileSync(pathToUserlist, newData);
                 // // console.log(newData)
                 // return OK
-                return res.status(200).send({ status: 0, message: "No Problem" });
+                return res.status(200).send({status: 0, message: "No Problem"});
             }
-            else {
+            else
+            {
                 // console.log("Error: Password not match")
                 // return OK
-                return res.status(503).send({ status: 1, message: "Password not match" });
+                return res.status(503).send({status: 1, message: "Password not match"});
             }
         }
-        else {
+        else
+        {
             // error. user not found
             // console.log("Error: User not found")
-            // return OK
-            return res.status(503).send({ status: 1, message: "User not found" });
+                // return OK
+            return res.status(503).send({status: 1, message: "User not found"});
         }
 
     }
-
-})
+    
+ })
 
 /**
  * @description  
@@ -2266,323 +2371,129 @@ app.post("/UpdateUserSetting", (req, res) => {
  * @returns taskId
  */
 app.post("/SaveUserAccount", (req, res) => {
-
-    if ((req.body.userName != null) && (req.body.password != null)) {
-
+    
+    if((req.body.userName != null) && (req.body.password != null))
+    {
+        
         // if not null, check if user list file exist
         // if user list file not exist create new
-        if (!fs.existsSync(pathToUserlist)) {
+        if(!fs.existsSync(pathToUserlist))
+        {
             // create if not existing
-            let userSessionList = { userList: [] };
+            let userSessionList = {userList: []};
             let strUserSessList = JSON.stringify(userSessionList);
             fs.writeFileSync(pathToUserlist, strUserSessList);
         }
-
+        
         // check if user exist in user list
         let userListFile = JSON.parse(fs.readFileSync(pathToUserlist));
         // if user exist, return error
         let indx = userListFile.userList.findIndex((element) => element.userName.toLowerCase() === req.body.userName.toLowerCase())
-        if (indx !== -1) {
+        if(indx !== -1)
+        {
             var info = userListFile.userList[indx];
-            if (req.body.calendarSetting != null) {
-                info["calendarSetting"] = req.body.calendarSetting;
+            if(req.body.calendarSetting != null)
+            {
+                info["calendarSetting"] = req.body.calendarSetting; 
                 // // console.log(req.body.calendarSetting)
             }
 
-            if (req.body.taskSetting != null) {
-                info["taskSetting"] = req.body.taskSetting;
+            if(req.body.taskSetting != null)
+            {
+                info["taskSetting"] = req.body.taskSetting; 
             }
 
             userListFile.userList.splice(indx, 1, info);
             let newData = JSON.stringify(userListFile);
             fs.writeFileSync(pathToUserlist, newData);
 
-            return res.status(200).send({ status: 0, message: "Messages available" });
+            return res.status(200).send({status: 0, message: "Messages available"});
         }
-        else {
+        else
+        {
             // if user not exist, add user and password to local list
-            var newItem = { 'userName': req.body.userName.toLowerCase(), 'password': req.body.password }
+            var newItem = {'userName': req.body.userName.toLowerCase(), 'password': req.body.password}
 
-            if (req.body.calendarSetting != null) {
-                newItem["calendarSetting"] = req.body.calendarSetting;
+            if(req.body.calendarSetting != null)
+            {
+                newItem["calendarSetting"] = req.body.calendarSetting; 
             }
 
-            if (req.body.taskSetting != null) {
-                newItem["taskSetting"] = req.body.taskSetting;
+            if(req.body.taskSetting != null)
+            {
+                newItem["taskSetting"] = req.body.taskSetting; 
             }
-
-
+            
+            
             userListFile.userList.push(newItem)
-
+            
             // rewrite
             let newData = JSON.stringify(userListFile);
             fs.writeFileSync(pathToUserlist, newData);
 
             // return OK
-            return res.status(200).send({ status: 0, message: "Messages available" });
+            return res.status(200).send({status: 0, message: "Messages available"});
         }
-
-
-    }
-    else {
-        // if null return error
-        return res.status(503).send({ status: 1, message: "Messages is not available" });
-    }
-
-
-})
-
-app.post("/register", async (req, res) => {
-    // Our register logic starts here
-
-    try {
-        // Get user input
-        const { first_name, email, password } = req.body;
-
-        // Validate user input
-        if (!(email && password && first_name)) {
-            res.status(400).send("All input is required");
-        }
-
-        // check if user already exist
-        // Validate if user exist in our database
-        const oldUser = await User.findOne({ email });
-
-        if (oldUser) {
-            return res.status(409).send("User Already Exist. Please Login");
-        }
-
-        // Encrypt user password
-        encryptedPassword = await bcrypt.hash(password, 10);
-
-        // Create user in our database
-        const user = await User.create({
-            first_name,
-            email: email.toLowerCase(), // sanitize: convert email to lowercase
-            password: encryptedPassword,
-        });
-
-        // Create token
-        const token = jwt.sign(
-            { user_id: user._id, email },
-            qrtoken,
-            {
-                expiresIn: "2h",
-            }
-        );
-
-        // return new user
-        res.status(201).json({ token });
-    } catch (err) {
-        console.log(err);
-    }
-    // Our register logic ends here
-});
-
-app.post("/login", async (req, res) => {
-    try {
-        // Get user input
-        const { first_name } = req.body;
-        let userID = '';
-        // Validate user input
-        if (!(first_name)) {
-            res.status(400).send("All input is required");
-        }
-        // Validate if user exist in our database
-        const user = await User.findOne({ first_name });
-
-        if (user) {
-            // Create token
-            const token = jwt.sign(
-                { user_id: user._id, first_name },
-                qrtoken,
-                {
-                    expiresIn: "2h",
-                }
-            );
-           return res.json( user._id);
-        }
-        return res.status(400).send("Invalid Credentials");
-    } catch (err) {
-        console.log(err);
-    }
-    // Our login logic ends here
-});
-
-
-app.post("/qr/generate", async (req, res) => {
-    try {
-        const { userId } = req.body;
-
-        // Validate user input
-        if (!userId) {
-            res.status(400).send("User Id is required");
-        }
-
-        const user = await User.findById(userId);
-
-        // Validate is user exist
-        if (!user) {
-            res.status(400).send("User not found");
-        }
-
-        const qrExist = await QRCode.findOne({ userId });
-
-        // If qr exist, update disable to true and then create a new qr record
-        if (!qrExist) {
-            await QRCode.create({ userId });
-        } else {
-            await QRCode.findOneAndUpdate({ userId }, { $set: { disabled: true } });
-            await QRCode.create({ userId });
-        }
-
-        // Generate encrypted data
-        const encryptedData = jwt.sign(
-            { userId: user._id },
-            qrtoken,
-            {
-                expiresIn: "1d",
-            }
-        );
-        // Generate qr code
-        //console.log("ENCRYPTED DATA: ",'\n', encryptedData);
-        let url = "https://"+ipAddress+":8443/redirectLogin?token=" + encryptedData;
-        generatedToken = encryptedData;
-        const dataImage = await QR.toDataURL(url);
-        //console.log("URL: ", '\n', url);
-        // Return qr code
-        return res.status(200).json({ dataImage });
-    } catch (err) {
-        console.log(err);
-    }
-});
-
-app.get("/redirectLogin", (req, res) => {
-    if (req.query.token != null) {
-        console.log("redirectLogin");
-        res.redirect("http://"+ipAddress+":3000/login-page")
-        //res.send(req.query.token);
-    } else {
-        res.send("QR Scanned Fail");
-    }    
-});
-
-app.get("/getToken", (req, res) => {
-    console.log("GENERATED TOKEN: ", generatedToken)
-    return res.send({"token": generatedToken});
-});
-
-
-
-app.post("/qr/scan", async (req, res) => {
-    //console.log("enter qr scan")
-    try {
-        const { token } = req.body.token;
-        //console.log("REQ BODY: ", req.body.token);
-        if (!token) {
-            res.status(400).send("Token is required");
-        }
-
-        const decoded = jwt.verify(token, qrtoken);
-        //console.log("token scan QR: ", token);
-        const qrCode = await QRCode.findOne({
-            userId: decoded.userId,
-            disabled: false,
-        });
-
-        if (!qrCode) {
-            res.status(400).send("QR Code not found");
-        }
-
-        const connectedDeviceData = {
-            userId: decoded.userId,
-            qrCodeId: qrCode._id
-        };
-
-        const connectedDevice = await ConnectedDevice.create(connectedDeviceData);
-
-        // Update qr code
-        await QRCode.findOneAndUpdate(
-            { _id: qrCode._id },
-            {
-                isActive: true,
-                connectedDeviceId: connectedDevice._id,
-                lastUsedDate: new Date(),
-            }
-        );
         
-        // Find user
-        const user = await User.findById(decoded.userId);
-
-        // Create token
-        const authToken = jwt.sign({ user_id: user._id },qrtoken, {
-            expiresIn: "2h",
-        });
-
-        // Return token
-        scannedToken = authToken;
-        console.log("Scanned token:", scannedToken);
-        return res.status(200).json({ token: authToken });
-
-        //res.redirect("http://10.131.178.21:3000/living-room");
-    } catch (err) {
-        console.log(err);
+        
     }
-});
-
-app.get("/waitToken", (req, res) => {
-    if(scannedToken != null || scannedToken != undefined || scannedToken != ''){
-        //console.log("LOGGED IN");
-        res.status(200).json({ scannedToken });
-        scannedToken = null;
-        console.log("scanned token clear: ", scannedToken);
+    else
+    {
+        // if null return error
+        return res.status(503).send({status: 1, message: "Messages is not available"});
     }
+
+
 })
 
 app.get("/UserSettings", (req, res) => {
 
     const sessionData = JSON.parse(fs.readFileSync('./session.json'));
 
-    if (sessionData != null) {
+    if(sessionData != null)
+    {
         // let userInfor = fs.readFileSync(pathToUserlist);
         let userListFile = JSON.parse(fs.readFileSync(pathToUserlist));
-        let index = userListFile.userList.findIndex((x) => x.userName === sessionData.userName)
-
+        let index = userListFile.userList.findIndex( (x) => x.userName === sessionData.userName)
+        
         // // console.log(userListFile)
-        if (index != -1) {
+        if(index != -1)
+        {
             res.send(userListFile.userList[index])
         }
-        else {
-            res.send({ result: "error" })
+        else
+        {
+            res.send({result: "error"})
         }
 
     }
 });
-
+ 
 /**
  * @description  
  * @returns taskId
  */
-app.get("/ListUserAccount", (req, res = response) => {
+ app.get("/ListUserAccount", (req, res) => {
 
-    //return res.json({userList: []});
 
     // check if user list file exist
-    if (!fs.existsSync(pathToUserlist)) {
+    if(!fs.existsSync(pathToUserlist))
+    {
         // create if not existing
         // if user list file not exist create new and return empty
-        let userSessionList = { userList: [] };
+        let userSessionList = {userList: []};
         let strUserSessList = JSON.stringify(userSessionList);
         fs.writeFileSync(pathToUserlist, strUserSessList);
 
         res.send(userSessionList);
     }
     // else, return list of users
-    else {
+    else
+    {
         let userListFile = JSON.parse(fs.readFileSync(pathToUserlist));
         res.send(userListFile);
     }
-
+    
 });
 
 /**
@@ -2590,39 +2501,51 @@ app.get("/ListUserAccount", (req, res = response) => {
  * @param       {} req - user name
  * @returns taskId
  */
-app.get("/LoadUserAccount", (req, res) => {
+ app.get("/LoadUserAccount", (req, res) => {
 
     // check if user name is not null
-    if (req.query.userName != null) {
-
+    if(req.query.userName != null)
+    {
+        
         // if not null, check if user list file exist
-        if (!fs.existsSync(pathToUserlist)) {
+        if(!fs.existsSync(pathToUserlist))
+        {
             // if user list file not exist, return error
-            res.send({ result: "Error: User List not exist" });
+            res.send({result: "Error: User List not exist"});
         }
-        else {
+        else
+        {
             let userListFile = JSON.parse(fs.readFileSync(pathToUserlist));
             // else, check if user exist in user list
             let index = userListFile.userList.findIndex((element) => element.userName.toLowerCase() === req.query.userName.toLowerCase())
             // if user exist, return user information
-            if (index != null) {
+            if(index != null)
+            {
                 // if user not exist, return error
                 res.send(userListFile.userList[index]);
 
             }
-            else {
+            else
+            {
                 // if user not exist, return error
-                res.send({ result: "Error: Cannot Find User" });
+                res.send({result: "Error: Cannot Find User"});
 
             }
 
         }
+        
+        
+        
     }
     // if null return error
-    else {
-        res.send({ result: "Error: Insufficient Parameter" });
-    }
+    else
+    {
 
+        res.send({result: "Error: Insufficient Parameter"});
+    }
+    
+
+    
 });
 
 
@@ -2631,19 +2554,19 @@ app.get("/LoadUserAccount", (req, res) => {
  * @param       {} req - user name
  * @returns taskId
  */
-app.get("/getDevices", (req, res) => {
+ app.get("/getDevices", (req, res) => {
     let listDeviceCmd = "https://api.switch-bot.com/v1.0/devices"
     let auth = "d698192195a04cf2667f41df22ee93fed3bd8668ab9e81230a1e51245d4ce63c4378e45fbfb24e8406426ede55be6130"
 
 
     // console.log("sending result")
-    axios.get(listDeviceCmd, {
+    axios.get(listDeviceCmd,{
         // headers: {'Content-Type': "application/json; charset=utf8" ,'Authorization': auth}
         mode: 'no-cors',
-        headers: { 'Authorization': auth },
-    }).then(result => {
-        // console.log(result.data.body.deviceList)
-    })
+        headers: {'Authorization': auth},
+        }).then(result => {
+            // console.log(result.data.body.deviceList)
+        })
 
 });
 
@@ -2652,44 +2575,45 @@ app.get("/getDevices", (req, res) => {
  * @param       {} req - user name
  * @returns taskId
  */
-app.get("/getDevicesStatus", (req, res) => {
+ app.get("/getDevicesStatus", (req, res) => {
     let listDeviceCmd = "https://api.switch-bot.com/v1.0/devices/"
     let auth = "d698192195a04cf2667f41df22ee93fed3bd8668ab9e81230a1e51245d4ce63c4378e45fbfb24e8406426ede55be6130"
 
     listDeviceCmd = listDeviceCmd + req.query.deviceID + "/status"
 
     // console.log(listDeviceCmd)
-    axios.get(listDeviceCmd, {
+    axios.get(listDeviceCmd,{
         // headers: {'Content-Type': "application/json; charset=utf8" ,'Authorization': auth}
         mode: 'no-cors',
-        headers: { 'Authorization': auth },
-    }).then(result => {
-        // // console.log(result.data.body)
-        res.send(result.data.body)
-    })
+        headers: {'Authorization': auth},
+        }).then(result => {
+            // // console.log(result.data.body)
+            res.send(result.data.body)
+        })
 
 });
 
-async function fetchCommandList(devId, command) {
+async function fetchCommandList(devId, command)
+{
     let listDeviceCmd = "https://api.switch-bot.com/v1.0/devices/"
     let auth = "d698192195a04cf2667f41df22ee93fed3bd8668ab9e81230a1e51245d4ce63c4378e45fbfb24e8406426ede55be6130"
     listDeviceCmd = listDeviceCmd + devId + "/commands"
-
-    let body = { "command": command }
+    
+    let body = {"command":command}
 
     return new Promise((resolve) => {
 
         fetch(listDeviceCmd, {
             method: 'post',
             body: JSON.stringify(body),
-            headers: { 'Authorization': auth, 'Content-Type': 'application/json; charset=utf8' }
+            headers: {'Authorization': auth, 'Content-Type': 'application/json; charset=utf8'}
         }).then(res => res.json())
-            .then((result) => {
-                // // console.log(result)
-                resolve(result)
-            }).catch((error) => {
-                // console.log(error)
-            })
+        .then((result) => {
+            // // console.log(result)
+            resolve(result)
+        }).catch((error) => {
+            // console.log(error)
+        })
         // const data = await response.json();
 
     })
@@ -2700,8 +2624,8 @@ async function fetchCommandList(devId, command) {
  * @param       {} req - user name
  * @returns taskId
  */
-app.get("/postDevicesCommand", (req, res) => {
-
+ app.get("/postDevicesCommand", (req, res) => {
+    
     fetchCommandList(req.query.deviceID, req.query.command).then((result) => {
         // // console.log("done:", result)
         res.send(result)
@@ -2709,23 +2633,4 @@ app.get("/postDevicesCommand", (req, res) => {
 
 });
 
-
-
-app.get("/pass", (req, res) => {
-    if (req.query.token != undefined) {
-        console.log("success");
-
-        res.status(201).json({ token });
-    } else {
-        res.status(400).send("Error");
-    }
-})
-
 app.listen(port, () => console.log("server running on port" + port))
-
-//var server = https.createServer(options, app).listen(port, function () {
-//    console.log("server running on port" + port);
-    //console.log('Open ' + url.format(asUrl) + ' with a WebRTC capable browser');
-//  });
-
-module.exports = app;
