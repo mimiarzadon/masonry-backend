@@ -52,5 +52,5 @@ jobs:
         with:
           app-name: 'masonry-backend'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_530F63BD056F4EF58ED7849B91914A9D }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_0B5307EB267247028012BAA85FD7CC89 }}
           package: .
