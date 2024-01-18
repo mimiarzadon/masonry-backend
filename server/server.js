@@ -351,7 +351,7 @@ app.get('/google/callback',
         //res.redirect('/success')
         // res.redirect('http://localhost:3000/link-user?result=ok') // result=ok is my way to highlight google button
         res.redirect('https://masonry-app.netlify.app/calendar-settings') // result=ok is my way to highlight google button
-
+        console.log("red redirect to calendar-settings")
     }
 );
 
