@@ -340,7 +340,7 @@ passport.authenticate('microsoft', { failureRedirect: '/login' }),
 
 function (req, res) {
   
-  res.redirect('http://localhost:3000/calendar-settings');
+  res.redirect('https://masonry-app.netlify.app/calendar-settings');
 });
 
 app.get('/google/callback',
